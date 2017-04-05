@@ -69,6 +69,8 @@ class Context:
     def deps(self, rule_url: str):
         def g(func):
             self._set_deps(rule_url, func)
+            func.action = self.action(rule_url)
+            func.task = self.task(rule_url)
             return func
         return g
 

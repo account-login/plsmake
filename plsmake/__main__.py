@@ -3,6 +3,11 @@ import argparse
 from plsmake.app import create_init_env, load_file, resolve, execute
 
 
+# TODO: --verbose
+# TODO: --list-deps
+# TODO: --dry-run
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--file', default='Plsmakefile.py')
