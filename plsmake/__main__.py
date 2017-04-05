@@ -6,6 +6,9 @@ from plsmake.app import create_init_env, load_file, resolve, execute
 # TODO: --verbose
 # TODO: --list-deps
 # TODO: --dry-run
+# TODO: --log
+# TODO: -j
+# TODO: auto dependancy with gcc -MM
 
 
 def parse_args():
