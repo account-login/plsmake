@@ -19,7 +19,8 @@ install:
 build: off
 
 test_script:
-  - pytest -s --verbose --cov=plsmake plsmake/tests/
+  - pytest -sv --cov=plsmake plsmake/tests/
+  - codecov
 
 artifacts:
   - path: 'dist\*'

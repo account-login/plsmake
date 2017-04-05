@@ -14,5 +14,5 @@ install:
 
 # command to run tests
 script:
-  - pytest -s --verbose --cov=plsmake plsmake/tests/
+  - pytest -sv --cov=plsmake plsmake/tests/
   - codecov
