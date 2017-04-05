@@ -1,2 +1,3 @@
 # plsmake
-A `make` replacement aims at simplicity..
+
+A `make` replacement aims at simplicity.
