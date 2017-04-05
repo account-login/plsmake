@@ -1,0 +1,25 @@
+version: '0.0.1.{build}'
+
+environment:
+  matrix:
+    - PYTHON: "C:\\Python34"
+    - PYTHON: "C:\\Python35"
+    - PYTHON: "C:\\Python36"
+    - PYTHON: "C:\\Python34-x64"
+    - PYTHON: "C:\\Python35-x64"
+    - PYTHON: "C:\\Python36-x64"
+  PATH: "%PYTHON%;%PYTHON%\\scripts;%PATH%"
+
+install:
+  # We need wheel installed to build wheels
+  - pip install wheel
+  - python setup.py sdist bdist_wheel
+  - pip install .[ci]
+
+build: off
+
+test_script:
+  - pytest -s --verbose --cov=plsmake plsmake/tests/
+
+artifacts:
+  - path: 'dist\*'

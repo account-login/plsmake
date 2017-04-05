@@ -1,0 +1,18 @@
+language: python
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+
+# Ubuntu 14.04 Trusty support
+sudo: required
+dist: trusty
+
+# command to install dependencies
+install:
+  - pip install .[ci]
+
+# command to run tests
+script:
+  - pytest -s --verbose --cov=plsmake plsmake/tests/
+  - codecov

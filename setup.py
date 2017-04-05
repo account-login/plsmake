@@ -13,6 +13,7 @@ setup(
     install_requires=['structlog'],
     extras_require={
         ':python_version<"3.5"': ['typing'],
+        'ci': ['pytest', 'pytest-sugar', 'pytest-cov', 'codecov'],
     },
     python_requires='>=3.4',
     url='https://github.com/account-login/plsmake',
