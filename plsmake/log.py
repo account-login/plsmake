@@ -1,8 +1,27 @@
+import logging
 import time
 
-from structlog import configure
+from structlog import configure, DropEvent
 from structlog.stdlib import add_log_level
 from structlog.processors import format_exc_info, StackInfoRenderer
+
+
+# from: structlog/stdlib.py
+_NAME_TO_LEVEL = {
+    'critical': logging.CRITICAL,
+    'exception': logging.ERROR,
+    'error': logging.ERROR,
+    'warn': logging.WARNING,
+    'warning': logging.WARNING,
+    'info': logging.INFO,
+    'debug': logging.DEBUG,
+    'notset': logging.NOTSET,
+}
+
+_LEVEL_TO_NAME = dict(
+    (v, k) for k, v in _NAME_TO_LEVEL.items()
+    if k not in ("warn", "notset")
+)
 
 
 def add_timestamp(logger, name, event_dict):
@@ -10,15 +29,22 @@ def add_timestamp(logger, name, event_dict):
     return event_dict
 
 
-def print_log(logger, name: str, event_dict):
-    event = event_dict['event']
-    name = name.upper()
-    pairs = ' '.join(
-        '%s=%s' % (key, value)
-        for key, value in event_dict.items()
-        if key not in {'event', 'level', 'timestamp'}
-    )
-    return '{name:9s}{event}: {pairs}'.format_map(locals())
+class LogRenderer:
+    def __init__(self, level=logging.INFO):
+        self.level = level
+
+    def __call__(self, logger, name: str, event_dict):
+        if _NAME_TO_LEVEL[name] < self.level:
+            raise DropEvent
+
+        event = event_dict['event']
+        name = name.upper()
+        pairs = ' '.join(
+            '%s=%s' % (key, value)
+            for key, value in event_dict.items()
+            if key not in {'event', 'level', 'timestamp'}
+        )
+        return '{name:9s}{event}: {pairs}'.format_map(locals())
 
 
 def config_logger():
@@ -27,6 +53,6 @@ def config_logger():
         add_timestamp,
         format_exc_info,
         StackInfoRenderer(),
-        print_log,
+        LogRenderer(),
     ]
     configure(processors=processors)
