@@ -151,9 +151,12 @@ def resolve(target: str, rule_list: RuleList, env: Env) -> ResolverResults:
     """Return a dict of target -> (deps, env, action)"""
     result = OrderedDict()
     pending = deque([(target, env.make_child())])
+    pending_set = {target}
     while pending:
         target, subenv = pending.popleft()  # type: Tuple[str, Env]
+        pending_set.remove(target)
         assert target not in result
+
         depends = []
         only_action = None
         action_option = None
@@ -181,7 +184,10 @@ def resolve(target: str, rule_list: RuleList, env: Env) -> ResolverResults:
             action=(only_action and func_name(only_action)),
         )
         result[target] = depends, subenv, only_action, action_option
-        pending.extend((dep, subenv.make_child()) for dep in depends if dep not in result)
+        for dep in depends:
+            if dep not in result and dep not in pending_set:
+                pending.append((dep, subenv.make_child()))
+                pending_set.add(dep)
 
     return result
 

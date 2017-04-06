@@ -34,6 +34,7 @@ def unittest(env, depends, name):
     env['CFLAGS'] += ['-DRUN_TEST']
     depends.append('test_{name}.o'.format_map(locals()))
     depends.append('{name}.o'.format_map(locals()))
+    depends.append('{name}.o'.format_map(locals()))     # duplicated
 
 @action('test_{name}')
 def unittest(env, depends, name):
@@ -115,7 +116,7 @@ def test_resolve():
         (target, deps) for target, (deps, env, action, action_option) in result.items()
     )
     assert deps_map == {
-        'test_asdf': ['test_asdf.o', 'asdf.o'],
+        'test_asdf': ['test_asdf.o', 'asdf.o', 'asdf.o'],
         'test_asdf.o': ['test_asdf.c'],
         'asdf.o': ['asdf.c'],
         'test_asdf.c': [],
