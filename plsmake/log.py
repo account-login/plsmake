@@ -34,8 +34,9 @@ class LogRenderer:
         self.level = level
 
     def __call__(self, logger, name: str, event_dict):
-        if _NAME_TO_LEVEL[name] < self.level:
-            raise DropEvent
+        if _NAME_TO_LEVEL[name] < self.level:       # filter by level
+            if event_dict['event'] != 'run_cmd':    # run_cmd is shown anyway
+                raise DropEvent
 
         event = event_dict['event']
         name = name.upper()
@@ -47,12 +48,19 @@ class LogRenderer:
         return '{name:9s}{event}: {pairs}'.format_map(locals())
 
 
-def config_logger():
+def config_logger(verbose=0):
+    if verbose >= 2:
+        level = logging.DEBUG
+    elif verbose >= 1:
+        level = logging.INFO
+    else:
+        level = logging.WARNING
+
     processors = [
         add_log_level,
         add_timestamp,
         format_exc_info,
         StackInfoRenderer(),
-        LogRenderer(),
+        LogRenderer(level=level),
     ]
     configure(processors=processors)
