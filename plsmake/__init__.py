@@ -1,17 +1,7 @@
-from structlog import get_logger, configure
-from structlog.stdlib import add_log_level
-from structlog.processors import format_exc_info, StackInfoRenderer
+from structlog import get_logger
 
-from plsmake.log import add_timestamp, print_log
+from plsmake.log import add_timestamp, config_logger
 
 
-processors = [
-    add_log_level,
-    add_timestamp,
-    format_exc_info,
-    StackInfoRenderer(),
-    print_log,
-]
-configure(processors=processors)
-
+config_logger()
 logger = get_logger(__name__)
