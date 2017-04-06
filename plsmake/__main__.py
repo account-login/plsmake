@@ -32,8 +32,8 @@ def print_deps(target: str, resolution: ResolverResults, indent=0, visited=None)
 
     indent += 1
     for dep in depends:
-        if dep in visited:
-            iprint(target, '\t# circular dependency')
+        if dep in visited and resolution[dep][0]:
+            iprint(dep, '\t# duplicated')
         else:
             print_deps(dep, resolution, indent=indent, visited=visited)
 
