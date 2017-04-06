@@ -22,4 +22,4 @@ def task(rule_url):
 
 def run(*args):
     logger.info('run_cmd', args=args)
-    subprocess.check_call(args)
+    return subprocess.check_output(args)
