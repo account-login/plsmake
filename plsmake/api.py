@@ -21,10 +21,10 @@ def task(rule_url):
 
 
 def run(*args):
-    logger.info('run_cmd', args=args)
+    logger.info('run_cmd', msg=' '.join(args), args=args)
     return subprocess.check_call(args)
 
 
 def run_with_output(*args):
-    logger.info('run_cmd', args=args)
+    logger.info('run_cmd', msg=' '.join(args), args=args)
     return subprocess.check_output(args)

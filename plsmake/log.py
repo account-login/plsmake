@@ -91,12 +91,15 @@ class LogRenderer:
 
         event = event_dict['event']
         name = name.upper()
-        pairs = ' '.join(
-            '%s=%s' % (key, value)
-            for key, value in event_dict.items()
-            if key not in {'event', 'level', 'timestamp'}
-        )
-        return '{name:9s}{event}: {pairs}'.format_map(locals())
+        if 'msg' in event_dict:
+            msg = event_dict['msg'].format_map(event_dict)
+        else:
+            msg = ' '.join(
+                '%s=%s' % (key, value)
+                for key, value in event_dict.items()
+                if key not in {'event', 'level', 'timestamp'}
+            )
+        return '{name:5s} {event}: {msg}'.format_map(locals())
 
 
 _LOG_DISPATCHER = LogDispatcher()
