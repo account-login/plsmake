@@ -2,7 +2,8 @@ from plsmake.api import run_with_output
 
 
 def extend_depends_by_compiler(env, depends):
-    output = run_with_output(env['CXX'], '-MM', '-MT', 'dummy', *env['CXXFLAGS'], *depends)
+    cmd = [env['CXX'], '-MM', '-MT', 'dummy'] + env['CXXFLAGS'] + depends
+    output = run_with_output(*cmd)
     extra_deps = parse_make_deps(output.decode())['dummy']
     for dep in extra_deps:
         if dep not in depends:
