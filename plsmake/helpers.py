@@ -1,8 +1,23 @@
 from plsmake.api import run_with_output
 
 
+SOURCE_SUFFIX = [
+    '.c', '.cc', '.cpp', '.cxx', '.c++',
+    '.h', '.hh', '.hpp', '.hxx',
+]
+
+
+def is_source(filename: str):
+    filename = filename.lower()
+    for suff in SOURCE_SUFFIX:
+        if filename.endswith(suff):
+            return True
+    return False
+
+
 def extend_depends_by_compiler(env, depends):
-    cmd = [env['CXX'], '-MM', '-MT', 'dummy'] + env['CXXFLAGS'] + depends
+    srcs = [dep for dep in depends if is_source(dep)]
+    cmd = [env['CXX'], '-MM', '-MT', 'dummy'] + env['CXXFLAGS'] + srcs
     output = run_with_output(*cmd)
     extra_deps = parse_make_deps(output.decode())['dummy']
     for dep in extra_deps:
