@@ -1,3 +1,7 @@
+import os
+from typing import Optional, Sequence
+
+from plsmake import logger
 from plsmake.api import run_with_output
 
 
@@ -5,6 +9,7 @@ SOURCE_SUFFIX = [
     '.c', '.cc', '.cpp', '.cxx', '.c++',
     '.h', '.hh', '.hpp', '.hxx',
 ]
+CACHE_DIR = '.plscache'
 
 
 def is_source(filename: str):
@@ -15,14 +20,75 @@ def is_source(filename: str):
     return False
 
 
+def file_time(filename: str):
+    return os.stat(filename).st_mtime_ns
+
+
+def get_deps_with_cxx(env, sourcefile: str) -> Sequence[str]:
+    cmd = [env['CXX'], '-MM', '-MT', 'dummy'] + env['CXXFLAGS'] + [sourcefile]
+    output = run_with_output(*cmd)
+    depends = parse_make_deps(output.decode())['dummy']
+    return [os.path.normpath(dep) for dep in depends]
+
+
+def get_deps_cache_filename(sourcefile: str):
+    return os.path.join(CACHE_DIR, sourcefile) + '.deps'
+
+
+def get_deps_with_cache(env, sourcefile: str) -> Optional[Sequence[str]]:
+    cache_file = get_deps_cache_filename(sourcefile)
+    cache_dir = os.path.dirname(cache_file)
+    if not os.path.isdir(cache_dir):
+        logger.debug('get_deps.make_dir', dir=cache_dir)
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+        except OSError:
+            logger.exception('get_deps.make_dir_fail')
+            return None
+
+    if not os.path.exists(cache_file):
+        logger.debug('get_deps.no_cache')
+        return None
+
+    with open(cache_file, 'rt') as fp:
+        depends = fp.read().splitlines()
+
+    cache_time = file_time(cache_file)
+    for dep in [sourcefile] + depends:
+        if not os.path.exists(dep) or file_time(dep) > cache_time:
+            logger.debug('get_deps.cache_expire', cache_file=cache_file, dep=dep)
+            return None
+
+    return depends
+
+
+def set_deps_cache(env, sourcefile: str, depends: Sequence[str]):
+    cache_file = get_deps_cache_filename(sourcefile)
+    logger.debug('get_deps.set_cache', cache_file=cache_file)
+    with open(cache_file, 'wt+') as fp:
+        fp.write('\n'.join(depends) +'\n')
+
+
+def get_deps(env, sourcefile: str) -> Sequence[str]:
+    depends = get_deps_with_cache(env, sourcefile)
+    if depends is None:
+        depends = get_deps_with_cxx(env, sourcefile)
+        set_deps_cache(env, sourcefile, depends)
+        cache_hit = False
+    else:
+        cache_hit = True
+
+    logger.debug('get_deps.result', depends=depends, cache_hit=cache_hit)
+    return depends
+
+
 def extend_depends_by_compiler(env, depends):
     srcs = [dep for dep in depends if is_source(dep)]
-    cmd = [env['CXX'], '-MM', '-MT', 'dummy'] + env['CXXFLAGS'] + srcs
-    output = run_with_output(*cmd)
-    extra_deps = parse_make_deps(output.decode())['dummy']
-    for dep in extra_deps:
-        if dep not in depends:
-            depends.append(dep)
+    for sourcefile in srcs:
+        extra_deps = get_deps(env, sourcefile)
+        for dep in extra_deps:
+            if dep not in depends:
+                depends.append(dep)
 
 
 _WORD_BREAK = object()
