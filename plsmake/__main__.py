@@ -21,21 +21,27 @@ def parse_args():
     return parser.parse_args()
 
 
-def print_deps(target: str, resolution: ResolverResults, indent=0, visited=None):
+def print_deps(target: str, resolution: ResolverResults, indent=0, visited=None, stack=None):
     def iprint(*args):
         print('    ' * indent, *args)
 
     visited = visited or set()
+    stack = stack or []
     depends, _, _, _ = resolution[target]
     visited.add(target)
+    stack.append(target)
     iprint(target)
 
     indent += 1
     for dep in depends:
-        if dep in visited and resolution[dep][0]:
-            iprint(dep, '\t# duplicated')
+        if dep in stack:
+            iprint(dep, '\t# !!!reference parent!!!')
+        elif dep in visited and resolution[dep][0]: # dep is visited and has dependencies
+            iprint(dep, '\t# children omitted')
         else:
-            print_deps(dep, resolution, indent=indent, visited=visited)
+            print_deps(dep, resolution, indent=indent, visited=visited, stack=stack)
+
+    stack.pop()
 
 
 def main():
