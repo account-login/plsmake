@@ -15,6 +15,9 @@ setup(
         ':python_version<"3.5"': ['typing'],
         'ci': ['pytest', 'pytest-sugar', 'pytest-cov', 'codecov'],
     },
+    entry_points={
+        'console_scripts': ['plsmake=plsmake.__main__:main'],
+    },
     python_requires='>=3.4',
     url='https://github.com/account-login/plsmake',
     license='MIT',
