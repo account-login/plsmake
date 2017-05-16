@@ -24,15 +24,23 @@ def file_time(filename: str):
     return os.stat(filename).st_mtime_ns
 
 
+def normpath(path: str):
+    return os.path.normpath(path).replace('\\', '/')
+
+
+def joinpath(path1, path2):
+    return normpath(os.path.join(path1, path2))
+
+
 def get_deps_with_cxx(env, sourcefile: str) -> Sequence[str]:
     cmd = [env['CXX'], '-MM', '-MT', 'dummy'] + env['CXXFLAGS'] + [sourcefile]
     output = run_with_output(*cmd)
     depends = parse_make_deps(output.decode())['dummy']
-    return [os.path.normpath(dep) for dep in depends]
+    return [normpath(dep) for dep in depends]
 
 
 def get_deps_cache_filename(sourcefile: str):
-    return os.path.join(CACHE_DIR, sourcefile) + '.deps'
+    return joinpath(CACHE_DIR, sourcefile) + '.deps'
 
 
 def get_deps_with_cache(env, sourcefile: str) -> Optional[Sequence[str]]:
@@ -50,7 +58,7 @@ def get_deps_with_cache(env, sourcefile: str) -> Optional[Sequence[str]]:
         logger.debug('get_deps.no_cache')
         return None
 
-    with open(cache_file, 'rt') as fp:
+    with open(cache_file, 'rt', encoding='utf8') as fp:
         depends = fp.read().splitlines()
 
     cache_time = file_time(cache_file)
@@ -65,8 +73,8 @@ def get_deps_with_cache(env, sourcefile: str) -> Optional[Sequence[str]]:
 def set_deps_cache(env, sourcefile: str, depends: Sequence[str]):
     cache_file = get_deps_cache_filename(sourcefile)
     logger.debug('get_deps.set_cache', cache_file=cache_file)
-    with open(cache_file, 'wt+') as fp:
-        fp.write('\n'.join(depends) +'\n')
+    with open(cache_file, 'wt+', newline='\n', encoding='utf8') as fp:
+        fp.write('\n'.join(depends) + '\n')
 
 
 def get_deps(env, sourcefile: str) -> Sequence[str]:
@@ -96,6 +104,7 @@ _LINE_BREAK = object()
 
 
 def _split_gen(string: str):
+    string = string.replace('\r\n', '\n')
     escaping = False
     for ch in string:
         if escaping:
