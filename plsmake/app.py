@@ -1,9 +1,10 @@
 from collections import OrderedDict, deque
+import concurrent.futures as cf
 from contextlib import contextmanager
 from functools import update_wrapper
 import os
 import shlex
-from typing import Callable, Mapping, Sequence, Tuple
+from typing import Callable, Mapping, Sequence, Tuple, Set, Dict, List
 
 from plsmake import logger
 from plsmake.env import Env
@@ -225,13 +226,83 @@ def execute(target: str, howto: ResolverResults, always_make=False, visited=None
     visited = visited or set()
     visited.add(target)
 
-    log = logger.bind(target=target)
-    log.info('execute.begin')
-
     depends, env, action, action_option = howto[target]
     for dep in depends:
         if dep not in visited:
             execute(dep, howto, always_make=always_make, visited=visited)
+
+    run_target_action(target, howto, always_make=always_make)
+
+
+class ParallelExecutor:
+    def __init__(self, howto: ResolverResults):
+        self.howto = howto
+
+        self._waiting = dict()      # type: Dict[str, Set[str]]
+        self._rev_waiting = dict()  # type: Dict[str, Set[str]]
+        self._pending = []          # type: List[str]
+
+    def add_target(self, target: str):
+        if target in self._waiting or target in self._pending:
+            return
+
+        depends, *_ = self.howto[target]
+        waiting = self._waiting.setdefault(target, set())
+        for dep in depends:
+            waiting.add(dep)
+            self._rev_waiting.setdefault(dep, set()).add(target)
+            self.add_target(dep)
+
+        self.check_depends(target)
+
+    def check_depends(self, target):
+        """Check weither target is ready to run"""
+        if not self._waiting[target]:
+            del self._waiting[target]
+            logger.debug('execute.pending', target=target)
+            self._pending.append(target)
+
+    def action_done(self, target):
+        """Wake up waiting targets"""
+        for rev_dep in self._rev_waiting.pop(target, []):
+            self._waiting[rev_dep].remove(target)
+            self.check_depends(rev_dep)
+
+    def start(self, jobs: int, always_make=False):
+        assert self._pending
+
+        with cf.ThreadPoolExecutor(max_workers=jobs) as pool:
+            works = dict()
+            while self._pending or works:
+                pending = self._pending.copy()
+                self._pending.clear()
+                for target in pending:
+                    logger.debug('execute.submit', target=target)
+                    fut = pool.submit(
+                        run_target_action, target, self.howto, always_make=always_make)
+                    works[fut] = target
+
+                done, not_done = cf.wait(works.keys(), return_when=cf.FIRST_COMPLETED)
+                for fut in done:    # type: cf.Future
+                    if fut.exception() is not None:
+                        logger.error('execute.stop_all', cause_target=works[fut])
+                        # some task failed, cancel other task and re-raise exception
+                        for not_done_fut in not_done:   # type: cf.Future
+                            not_done_fut.cancel()
+                        raise fut.exception()
+
+                    self.action_done(works.pop(fut))
+
+        assert not self._pending
+        assert not self._waiting
+        assert not self._rev_waiting
+
+
+def run_target_action(target: str, howto: ResolverResults, always_make=False):
+    log = logger.bind(target=target)
+    log.info('execute.begin')
+
+    depends, env, action, action_option = howto[target]
 
     if should_build(target, howto, always_make=always_make):
         if action is None:
@@ -251,3 +322,9 @@ def execute(target: str, howto: ResolverResults, always_make=False, visited=None
         raise ActionNoResult
 
     log.info('execute.finish')
+
+
+def execute_parallel(target: str, howto: ResolverResults, jobs: int, always_make=False):
+    controller = ParallelExecutor(howto)
+    controller.add_target(target)
+    controller.start(jobs, always_make=always_make)

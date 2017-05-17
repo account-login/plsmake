@@ -1,12 +1,13 @@
 import argparse
 
 from plsmake import logger
-from plsmake.app import create_init_env, load_file, resolve, execute, ResolverResults
+from plsmake.app import (
+    create_init_env, load_file, resolve, ResolverResults, execute, execute_parallel,
+)
 from plsmake.log import config_logger
 
 
 # TODO: --dry-run
-# TODO: -j
 # TODO: auto dependancy with gcc -MM
 
 
@@ -18,6 +19,7 @@ def parse_args():
     parser.add_argument('--resolve', action='store_true', help='only do dependency resolution')
     parser.add_argument(
         '-B', '--always-make', action='store_true', help='Unconditionally make all targets')
+    parser.add_argument('-j', '--jobs', type=int, help='the number of jobs run simultaneously')
     parser.add_argument('targets', nargs='+', help='target to build')
 
     return parser.parse_args()
@@ -57,6 +59,8 @@ def main():
         result = resolve(target, rule_list, env)
         if option.resolve:
             print_deps(target, result)
+        elif option.jobs is not None:
+            execute_parallel(target, result, option.jobs, always_make=option.always_make)
         else:
             execute(target, result, always_make=option.always_make)
         logger.info('app.finish_target', target=target)
