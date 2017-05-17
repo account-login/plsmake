@@ -200,11 +200,19 @@ def file_exist(filename: str):
     return os.path.isfile(filename)
 
 
-def should_build(target: str, howto: ResolverResults):
+def should_build(target: str, howto: ResolverResults, always_make=False):
     if not file_exist(target):
         return True
 
-    depends, _, _, _ = howto[target]
+    depends, _, action, _ = howto[target]
+
+    if always_make:
+        if not depends and action is None:
+            # leaf
+            return False
+        else:
+            return True
+
     for dep in depends:
         _, _, dep_action, _ = howto[dep]
         if not (dep_action and dep_action.is_task) and file_newer(dep, target):
@@ -213,7 +221,7 @@ def should_build(target: str, howto: ResolverResults):
     return False
 
 
-def execute(target: str, howto: ResolverResults, visited=None):
+def execute(target: str, howto: ResolverResults, always_make=False, visited=None):
     visited = visited or set()
     visited.add(target)
 
@@ -223,9 +231,9 @@ def execute(target: str, howto: ResolverResults, visited=None):
     depends, env, action, action_option = howto[target]
     for dep in depends:
         if dep not in visited:
-            execute(dep, howto, visited=visited)
+            execute(dep, howto, always_make=always_make, visited=visited)
 
-    if should_build(target, howto):
+    if should_build(target, howto, always_make=always_make):
         if action is None:
             log.error('execute.no_action')
             raise NoAction(target)
@@ -237,7 +245,8 @@ def execute(target: str, howto: ResolverResults, visited=None):
             log.exception('execute.exception')
             raise
 
-    if (not (action and action.is_task)) and should_build(target, howto):
+    # check weither target exists after build
+    if (not (action and action.is_task)) and should_build(target, howto, always_make=False):
         log.error('execute.no_result')
         raise ActionNoResult
 

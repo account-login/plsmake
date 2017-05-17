@@ -16,6 +16,8 @@ def parse_args():
     parser.add_argument('-v', '--verbose', action='count', default=0, help='increase verbosity')
     parser.add_argument('--logfile', help='write log to file')
     parser.add_argument('--resolve', action='store_true', help='only do dependency resolution')
+    parser.add_argument(
+        '-B', '--always-make', action='store_true', help='Unconditionally make all targets')
     parser.add_argument('targets', nargs='+', help='target to build')
 
     return parser.parse_args()
@@ -56,7 +58,7 @@ def main():
         if option.resolve:
             print_deps(target, result)
         else:
-            execute(target, result)
+            execute(target, result, always_make=option.always_make)
         logger.info('app.finish_target', target=target)
 
     logger.info('app.finish')
